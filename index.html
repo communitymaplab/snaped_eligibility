@@ -43,7 +43,7 @@
     <body>
 	
 	<h2 class="tab">SNAP-Ed categorical eligibility tool</h2>
-	<p class="tab">This map allows you to identify areas of Georgia that are categorically eligible for SNAP-Ed programming. Click on the magnifying address in the upper left to search by address or click on a location to see its eligibility. Your results are shown on the right side of the page. The layer selector tool also allows you to toggle which areas of categorical eligibility are shown. Previous qualifying area includes the census data both in 2017 and 2018. These data were last updated in May, 2021.</p>
+	<p class="tab">This map allows you to identify areas of Georgia that are categorically eligible for SNAP-Ed programming. Click on the magnifying address in the upper left to search by address or click on a location to see its eligibility. Your results are shown on the right side of the page. The layer selector tool also allows you to toggle which areas of categorical eligibility are shown. These data were last updated in April, 2022.</p>
 	
         <div id="map">
         </div>
@@ -65,6 +65,7 @@
 		<script src="Data/Promise_zones_GA.js"></script>
 		<script src="Data/Tract_poverty19_above51.js"></script>
 		<script src="Data/ZCTA_poverty19_above51.js"></script>
+		<script src="Data/rural_county_GA.js"></script>
 		
 		<script src="js/Autolinker.min.js"></script>
 		<script src="js/leaflet/leaflet.js"></script>
@@ -186,13 +187,13 @@
         map.addLayer(layer_CongressionalDistrictGA);
 		
 			
-				//Add Congressional District layer
+		//Add rural GA counties layer
 		
-        function pop_eligible_area_2017_2018(feature, layer) {
+        function pop_rural_county_GA(feature, layer) {
             var popupContent = '<table>\
                     <tr>\
-                        <th scope="row">Eligible areas 2017-2018</th>\
-                        <td>' + (feature.properties['layer_pro'] !== null ? Autolinker.link(String(feature.properties['layer_pro'])) : '') + '</td>\
+                        <th scope="row">GA Rural counties</th>\
+                        <td>' + (feature.properties['county_nam'] !== null ? Autolinker.link(String(feature.properties['county_nam'])) : '') + '</td>\
                     </tr>\
                 </table>';
             //layer.bindPopup(popupContent, {maxHeight: 400});
@@ -201,12 +202,12 @@
 			});
         }
 		
-		map.createPane('pane_eligible_area_2017_2018');
-        map.getPane('pane_eligible_area_2017_2018').style.zIndex = 430;
-        map.getPane('pane_eligible_area_2017_2018').style['mix-blend-mode'] = 'normal';
+		map.createPane('pane_rural_county_GA');
+        map.getPane('pane_rural_county_GA').style.zIndex = 430;
+        map.getPane('pane_rural_county_GA').style['mix-blend-mode'] = 'normal';
 		
 		
-        function style_eligible_area_2017_2018() {
+        function style_rural_county_GA() {
             return {
                 opacity: 1,
                 color: 'rgba(0,0,0,0)',
@@ -220,15 +221,15 @@
             }
         }
 		
-        var layer_eligible_area_2017_2018 = new L.geoJson(json_eligible_area_2017_2018, {
+        var layer_rural_county_GA = new L.geoJson(json_rural_county_GA, {
             attribution: '<a href=""></a>',
-            pane: 'pane_eligible_area_2017_2018',
-			onEachFeature: pop_eligible_area_2017_2018,
-			style: style_eligible_area_2017_2018,
+            pane: 'pane_rural_county_GA',
+			onEachFeature: pop_rural_county_GA,
+			style: style_rural_county_GA,
 			interactive: true
         });
-		bounds_group.addLayer(layer_eligible_area_2017_2018);
-        map.addLayer(layer_eligible_area_2017_2018);
+		bounds_group.addLayer(layer_rural_county_GA);
+        map.addLayer(layer_rural_county_GA);
 			
 		
 		//Add tract poverty layer
@@ -328,7 +329,7 @@
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">Strike Force County</th>\
-                        <td>' + (feature.properties['Name_Geoco'] !== null ? Autolinker.link(String(feature.properties['Name_Geoco'])) : '') + '</td>\
+                        <td>' + (feature.properties['SchoolName'] !== null ? Autolinker.link(String(feature.properties['SchoolName'])) : '') + '</td>\
                     </tr>\
                 </table>';
             //layer.bindPopup(popupContent, {maxHeight: 401});
@@ -372,7 +373,7 @@
 		var QualifiedResults='';
 		var match = 0;	
 		var basemap={};
-		var popupproperties=["COMMUNITY","CD114FP","185_Pov_Pc","185_Pov_Pc","Name_Geoco"];
+		var popupproperties=["COMMUNITY","CD114FP","185_Pov_Pc","185_Pov_Pc","SchoolName"];
 		var popupContents=[];
 		var ClickMarker;
 
@@ -383,7 +384,7 @@
 			"Qualifying ZCTAs (purple)":layer_ZCTA_poverty19_above51,
 			"FRPL school buffers (blue)":layer_FRPL_2019_FTE_20_01_eligible_buffer,
 			"Promise Zones (green)":layer_Promise_zones_GA,
-			"Previous qualifying area (grey)":layer_eligible_area_2017_2018
+			"GA rural counties (grey)":layer_rural_county_GA
 			},{collapsed:false}).addTo(map);
 		
 		//Click event function
