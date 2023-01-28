@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+		<!--<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"
+			integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
+			crossorigin=""/>-->
+		<link rel="stylesheet" href="js/leaflet/leaflet.css">
+		<link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@2.6.0/dist/style.css">
+		<link href="https://unpkg.com/leaflet-geosearch@latest/assets/css/leaflet.css" rel="stylesheet" />
+        <style>
+		.tab { 
+			margin-left: 10px; 
+		}
+		
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+		.info {
+			padding: 6px 8px;
+			font: 14px/16px Arial, Helvetica, sans-serif;
+			background: white;
+			background: rgba(255,255,255,0.8);
+			box-shadow: 0 0 15px rgba(0,0,0,0.2);
+			border-radius: 5px;
+		}
+		.info h4 {
+			margin: 0 0 5px;
+			color: #777;
+		}
+		
+        </style>
+        <title></title>	
+    </head>
+	
+    <body>
+	
+	<h2 class="tab">SNAP-Ed categorical eligibility tool</h2>
+	<p class="tab">This map allows you to identify areas of Georgia that are categorically eligible for SNAP-Ed programming. Click on the magnifying address in the upper left to search by address or click on a location to see its eligibility. Your results are shown on the right side of the page. The layer selector tool also allows you to toggle which areas of categorical eligibility are shown. There is also a layer (shown in grey) of rural counties （defined by Georgia of Community Affairs) for additional eligibility. These data were last updated in September, 2022.</p>
+	
+        <div id="map">
+        </div>
+		<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"
+			integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw=="
+			crossorigin=""></script>
+		<script src="https://unpkg.com/@mapbox/leaflet-pip@latest/leaflet-pip.js"></script>
+		<!--
+		<script type="text/javascript" src="js/leaflet-geosearch/bundle.min.js" charset="utf-8"></script>
+		<script type="text/javascript" src="js/leaflet-geosearch/bundle.js" charset="utf-8"></script>
+		-->
+		<script src="https://unpkg.com/leaflet-geosearch@2.6.0/dist/bundle.js"></script>
+		<script src="https://unpkg.com/leaflet-geosearch@2.6.0/dist/bundle.min.js"></script>
+		
+		       
+		<script src="Data/eligible_area_2017_2018.js"></script>
+        <script src="Data/FRPL_2019_FTE_20_01_eligible_buffer.js"></script>
+		<script src="Data/CongressionalDistrictGA.js"></script>
+		<script src="Data/Promise_zones_GA.js"></script>
+		<script src="Data/Tract_poverty19_above51.js"></script>
+		<script src="Data/ZCTA_poverty19_above51.js"></script>
+		<script src="Data/rural_county_GA.js"></script>
+		
+		<script src="js/Autolinker.min.js"></script>
+		<script src="js/leaflet/leaflet.js"></script>
+		
+		<!--
+		<script src="js/leaflet/leaflet-src.js"></script>
+		-->
+		
+        <script>
+        var map = L.map('map', {
+            zoomControl:true, maxZoom:28, minZoom:1,
+			center: [-83.25, 32.6],zoom: 13
+        });
+        
+		var bounds_group = new L.featureGroup([]);
+		
+		//Add basemap from Mapbox
+		var basemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+			subdomains: 'abcd',
+			maxZoom: 19
+		});
+        basemap.addTo(map);
+
+		
+		function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+		//Add Promise zones layer
+		
+        function pop_Promise_zones_GA(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Strike Force County</th>\
+                        <td>' + (feature.properties['COMMUNITY'] !== null ? Autolinker.link(String(feature.properties['COMMUNITY'])) : '') + '</td>\
+                    </tr>\
+                </table>';
+            //layer.bindPopup(popupContent, {maxHeight: 401});
+			layer.on({
+			click: clickPoint
+			});
+        }
+		
+		map.createPane('pane_Promise_zones_GA');
+        map.getPane('pane_Promise_zones_GA').style.zIndex = 420;
+        map.getPane('pane_Promise_zones_GA').style['mix-blend-mode'] = 'normal';
+		
+		
+        function style_Promise_zones_GA() {
+            return {
+                opacity: 1,
+                color: 'rgba(0,0,0,0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(170,255,0,0.25)',
+            }
+        }
+		
+        var layer_Promise_zones_GA = new L.geoJson(json_Promise_zones_GA, {
+            attribution: '<a href=""></a>',
+            pane: 'pane_Promise_zones_GA',
+			onEachFeature: pop_Promise_zones_GA,
+			style: style_Promise_zones_GA,
+			interactive: true
+        });
+		bounds_group.addLayer(layer_Promise_zones_GA);
+        map.addLayer(layer_Promise_zones_GA);
+		
+		//Add Congressional District layer
+		
+        function pop_CongressionalDistrictGA(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Congressional District</th>\
+                        <td>' + (feature.properties['CD114FP'] !== null ? Autolinker.link(String(feature.properties['CD114FP'])) : '') + '</td>\
+                    </tr>\
+                </table>';
+            //layer.bindPopup(popupContent, {maxHeight: 400});
+			layer.on({
+			click: clickPoint
+			});
+        }
+		
+		map.createPane('pane_CongressionalDistrictGA');
+        map.getPane('pane_CongressionalDistrictGA').style.zIndex = 430;
+        map.getPane('pane_CongressionalDistrictGA').style['mix-blend-mode'] = 'normal';
+		
+		
+        function style_CongressionalDistrictGA() {
+            return {
+                /*pane: 'CongressionalDistrictGA',*/
+                opacity: 1,
+				//Red outline
+                color: 'rgba(128,128,128,0.8)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 3.0, 
+                fill: true,
+                fillOpacity: 0,
+                //fillColor: 'rgba(241,152,182,0.25)',
+            }
+        }
+		
+        var layer_CongressionalDistrictGA = new L.geoJson(json_CongressionalDistrictGA, {
+            attribution: '<a href=""></a>',
+            pane: 'pane_CongressionalDistrictGA',
+			onEachFeature: pop_CongressionalDistrictGA,
+			style: style_CongressionalDistrictGA,
+			interactive: true
+        });
+		bounds_group.addLayer(layer_CongressionalDistrictGA);
+        map.addLayer(layer_CongressionalDistrictGA);
+		
+			
+		//Add rural GA counties layer
+		
+        function pop_rural_county_GA(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">GA Rural counties</th>\
+                        <td>' + (feature.properties['county_nam'] !== null ? Autolinker.link(String(feature.properties['county_nam'])) : '') + '</td>\
+                    </tr>\
+                </table>';
+            //layer.bindPopup(popupContent, {maxHeight: 400});
+			layer.on({
+			click: clickPoint
+			});
+        }
+		
+		map.createPane('pane_rural_county_GA');
+        map.getPane('pane_rural_county_GA').style.zIndex = 430;
+        map.getPane('pane_rural_county_GA').style['mix-blend-mode'] = 'normal';
+		
+		
+        function style_rural_county_GA() {
+            return {
+                opacity: 1,
+                color: 'rgba(0,0,0,0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(0,0,0,0.2)',
+            }
+        }
+		
+        var layer_rural_county_GA = new L.geoJson(json_rural_county_GA, {
+            attribution: '<a href=""></a>',
+            pane: 'pane_rural_county_GA',
+			onEachFeature: pop_rural_county_GA,
+			style: style_rural_county_GA,
+			interactive: true
+        });
+		bounds_group.addLayer(layer_rural_county_GA);
+        map.addLayer(layer_rural_county_GA);
+			
+		
+		//Add tract poverty layer
+		
+		
+        function pop_Tract_poverty19_above51(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Poverty Percent</th>\
+                        <td>' + (feature.properties['185_Pov_Pc'] !== null ? Autolinker.link(String(feature.properties['185_Pov_Pc'])) : '') + '</td>\
+                    </tr>\
+                </table>';
+            //layer.bindPopup(popupContent, {maxHeight: 402});
+			layer.on({
+			click: clickPoint
+			});
+        }
+		
+		map.createPane('pane_Tract_poverty19_above51');
+        map.getPane('pane_Tract_poverty19_above51').style.zIndex = 402;
+        map.getPane('pane_Tract_poverty19_above51').style['mix-blend-mode'] = 'normal';
+		
+		
+        function style_Tract_poverty19_above51() {
+            return {
+                opacity: 1,
+                color: 'rgba(0,0,0,0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255, 0, 0,0.4)',
+            }
+        }
+		
+        var layer_Tract_poverty19_above51 = new L.geoJson(json_Tract_poverty19_above51, {
+            attribution: '<a href=""></a>',
+            pane: 'pane_Tract_poverty19_above51',
+			onEachFeature: pop_Tract_poverty19_above51,
+			style: style_Tract_poverty19_above51,
+			interactive: true
+        });
+		bounds_group.addLayer(layer_Tract_poverty19_above51);
+        map.addLayer(layer_Tract_poverty19_above51);
+        
+        
+    //Add zcta poverty layer
+		
+		
+        function pop_ZCTA_poverty19_above51(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Poverty Percent</th>\
+                        <td>' + (feature.properties['185_Pov_Pc'] !== null ? Autolinker.link(String(feature.properties['185_Pov_Pc'])) : '') + '%</td>\
+                    </tr>\
+                </table>';
+            //layer.bindPopup(popupContent, {maxHeight: 402});
+			layer.on({
+			click: clickPoint
+			});
+        }
+		
+		map.createPane('pane_ZCTA_poverty19_above51');
+        map.getPane('pane_ZCTA_poverty19_above51').style.zIndex = 402;
+        map.getPane('pane_ZCTA_poverty19_above51').style['mix-blend-mode'] = 'normal';
+		
+		
+        function style_ZCTA_poverty19_above51() {
+            return {
+                opacity: 1,
+                color: 'rgba(0,0,0,0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(201, 89, 201,0.4)',
+            }
+        }
+		
+        var layer_ZCTA_poverty19_above51 = new L.geoJson(json_ZCTA_poverty19_above51, {
+            attribution: '<a href=""></a>',
+            pane: 'pane_ZCTA_poverty19_above51',
+			onEachFeature: pop_ZCTA_poverty19_above51,
+			style: style_ZCTA_poverty19_above51,
+			interactive: true
+        });
+		bounds_group.addLayer(layer_ZCTA_poverty19_above51);
+        map.addLayer(layer_ZCTA_poverty19_above51);
+		
+		//Add FreeRedLunch Schools layer
+		
+        function pop_FRPL_2019_FTE_20_01_eligible_buffer(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Strike Force County</th>\
+                        <td>' + (feature.properties['SchoolName'] !== null ? Autolinker.link(String(feature.properties['SchoolName'])) : '') + '</td>\
+                    </tr>\
+                </table>';
+            //layer.bindPopup(popupContent, {maxHeight: 401});
+			layer.on({
+			click: clickPoint
+			});
+        }
+		
+		map.createPane('pane_FRPL_2019_FTE_20_01_eligible_buffer');
+        map.getPane('pane_FRPL_2019_FTE_20_01_eligible_buffer').style.zIndex = 403;
+        map.getPane('pane_FRPL_2019_FTE_20_01_eligible_buffer').style['mix-blend-mode'] = 'normal';
+		
+		
+        function style_FRPL_2019_FTE_20_01_eligible_buffer() {
+            return {
+                opacity: 1,
+                color: 'rgba(0,0,0,0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(86, 110, 224,0.5)',
+            }
+        }
+		
+        var layer_FRPL_2019_FTE_20_01_eligible_buffer = new L.geoJson(json_FRPL_2019_FTE_20_01_eligible_buffer, {
+            attribution: '<a href=""></a>',
+            pane: 'pane_FRPL_2019_FTE_20_01_eligible_buffer',
+			onEachFeature: pop_FRPL_2019_FTE_20_01_eligible_buffer,
+			style: style_FRPL_2019_FTE_20_01_eligible_buffer,
+			interactive: true
+        });
+		bounds_group.addLayer(layer_FRPL_2019_FTE_20_01_eligible_buffer);
+        map.addLayer(layer_FRPL_2019_FTE_20_01_eligible_buffer);
+		
+		//Add overlays control
+				
+		var layergroups=([layer_Promise_zones_GA,layer_CongressionalDistrictGA,layer_Tract_poverty19_above51,layer_ZCTA_poverty19_above51,layer_FRPL_2019_FTE_20_01_eligible_buffer]);
+		var QualifiedResults='';
+		var match = 0;	
+		var basemap={};
+		var popupproperties=["COMMUNITY","CD114FP","185_Pov_Pc","185_Pov_Pc","SchoolName"];
+		var popupContents=[];
+		var ClickMarker;
+
+		//Layer Control
+		L.control.layers(basemap,{
+			"Congressional boundaries (black)":layer_CongressionalDistrictGA,
+			"Qualifying tracts (red)":layer_Tract_poverty19_above51,
+			"Qualifying ZCTAs (purple)":layer_ZCTA_poverty19_above51,
+			"FRPL school buffers (blue)":layer_FRPL_2019_FTE_20_01_eligible_buffer,
+			"Promise Zones (green)":layer_Promise_zones_GA,
+			"GA rural counties (grey)":layer_rural_county_GA
+			},{collapsed:false}).addTo(map);
+		
+		//Click event function
+		function clickPoint(e){
+			//Remove previous marker from searchbox
+			searchControl.clearResults(null,true);
+			//Remove previous marker from click event
+			if (ClickMarker){
+				map.removeLayer(ClickMarker);
+			}
+			
+			var QualifiedResults='';
+			var match = 0;
+			popupContents=[];
+			//Add marker for the clicked point
+			ClickMarker=new L.marker(e.latlng).addTo(map);
+	
+			for (i=0;i<layergroups.length;i++){
+				match = match+leafletPip.pointInLayer(e.latlng, layergroups[i], false).length;
+				if(leafletPip.pointInLayer(e.latlng, layergroups[i], false).length>0){
+					popupContents.push((leafletPip.pointInLayer(e.latlng, layergroups[i], false))[0].feature.properties[popupproperties[i]]);
+				}
+				else popupContents.push("Not applicable")	
+			}
+			if (match > 1) {
+					var QualifiedResults="Qualified";
+				}
+			
+				else QualifiedResults="Unqualified";			
+			info.update(QualifiedResults,popupContents);
+		}
+		
+		
+		
+		// Qualification info
+		var info = L.control();
+
+		info.onAdd = function (map) {
+			this._div = L.DomUtil.create('div', 'info');
+			this.update();
+			return this._div;
+		};
+
+		info.update = function (props) {
+			this._div.innerHTML = '<h1>' + props+'</h1><br><b>Congressional District: </b>' + popupContents[1]+'<br><b>Tract Poverty rate (2019 data): </b>' + popupContents[2]+'<br><b>ZCTA poverty rate (2019 data): </b>' + popupContents[3]+'<br><b>FRPL school buffer (2019 data): </b>' + popupContents[4] + '<br><b>Promise Zone: </b>'+popupContents[0];
+		};
+
+		info.addTo(map);
+		
+		function SearchResultsUpdate(x,y){
+			//Remove previous marker
+			if (ClickMarker){
+				map.removeLayer(ClickMarker);
+			}
+			
+			var QualifiedResults='';
+			var match = 0;
+			popupContents=[];
+			//Add marker for the clicked point
+			ClickMarker=new L.marker([x,y]).addTo(map);
+			//determine if the point intersects with each layer	
+			for (i=0;i<layergroups.length;i++){
+				match = match+leafletPip.pointInLayer([x,y], layergroups[i], false).length;
+				if(leafletPip.pointInLayer([x,y], layergroups[i], false).length>0){
+					popupContents.push((leafletPip.pointInLayer([x,y], layergroups[i], false))[0].feature.properties[popupproperties[i]]);
+
+				}
+				else popupContents.push("Not applicable")	
+			}
+			if (match > 1) {
+					var QualifiedResults="Qualified";
+				}
+			
+				else QualifiedResults="Unqualified";			
+			info.update(QualifiedResults,popupContents);
+		}
+		
+		//Add GeoSearch box
+		var GeoSearchControl = window.GeoSearch.GeoSearchControl;
+		//var GoogleProvider = window.GeoSearch.GoogleProvider;
+		//var myProvider = new GoogleProvider;
+		
+		//var OpenStreetMapProvider = window.GeoSearch.OpenStreetMapProvider;
+		//var myProvider = new OpenStreetMapProvider;
+		
+		var EsriProvider = window.GeoSearch.EsriProvider;
+		var myProvider = new EsriProvider;
+
+		var searchControl = new GeoSearchControl({
+				provider: myProvider,           // required
+				showMarker: true,               // optional: true|false  - default true
+				marker: {                       // optional: L.Marker    - default L.Icon.Default
+					icon: new L.Icon.Default(),
+					draggable: false,
+				},
+				maxMarkers: 1,                  // optional: number      - default 1
+				retainZoomLevel:true,
+				style: 'button',                   // optional: bar|button  - default button
+				autoComplete: true,             // optional: true|false  - default true
+				autoCompleteDelay: 250,         // optional: number      - default 250
+				searchLabel: 'Enter address',   // optional: string      - default 'Enter address'
+				keepResult: true              // optional: true|false  - default false
+		});
+		map.addControl(searchControl);
+
+		//update info box if a point is searched
+		map.on('geosearch/showlocation', function(result) {
+			if (ClickMarker){
+				map.removeLayer(ClickMarker);
+			}
+			SearchResultsUpdate(result.location.x,result.location.y);
+		});
+		
+		//Set bounds
+		setBounds();
+		
+        </script>
+		<!--<script src="js/leaflet/leaflet.js"></script>-->
+
+    </body>
+</html>
