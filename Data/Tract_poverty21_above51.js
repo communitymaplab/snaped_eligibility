@@ -1,4 +1,4 @@
-var json_Tract_poverty19_above51 = {
+var json_Tract_poverty21_above51 = {
 "type": "FeatureCollection",
 "name": "GA_Tract_Poverty_Rate-18_22_51",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::4269" } },
